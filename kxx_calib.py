@@ -131,61 +131,6 @@ def chebyCalibFields(df_avg, cheby_deg, fields, thermometers):
         
     return coeffs_dict
 
-
-    # cp = []
-    # cm = []
-    
-    
-    # plot_dim = int(np.ceil(np.sqrt(len(fields))))
-
-        
-    # fig_p, axes_p = plt.subplots(plot_dim, plot_dim)
-    # fig_m, axes_m = plt.subplots(plot_dim, plot_dim)
-        
-    # if plot_dim != 1:
-    #     axes_p = axes_p.flatten(); axes_m = axes_m.flatten()
-    
-    # for i,field in enumerate(fields):
-    #     df_slice = df_avg[df_avg['Field (T)'] == field]
-    #     Rp = df_slice['R+'].values
-    #     Rm = df_slice['R-'].values
-    #     temperature = df_slice['Temperature (K)'].values
-
-    #     domain_Rp = np.log10(np.array([Rp.min(), Rp.max()]))
-    #     domain_Rm = np.log10(np.array([Rm.min(), Rm.max()]))
-
-    #     x = np.linspace(-1,1,100)
-
-    #     #Fitting T+
-    #     coeffs = Chebyshev.fit(np.log10(Rp), np.log10(temperature), cheby_deg, domain=domain_Rp).coef
-    #     cp.append(coeffs)
-    #     z = (x*(domain_Rp[1] - domain_Rp[0]) + domain_Rp[0] + domain_Rp[1])/2
-    #     if plot_dim != 1:
-    #         ax_Rp = axes_p[i]
-    #     else:
-    #         ax_Rp = axes_p
-    #     ax_Rp.plot(Rp, temperature, linewidth=0, marker='o')
-    #     ax_Rp.plot(10**z, 10**chebval(x, coeffs))
-    #     ax_Rp.set_ylabel('T (K)'); ax_Rp.set_xlabel('R+ ($\Omega$)')
-    #     ax_Rp.set_title('{} T'.format(field))
-
-    #     #Fitting T-
-    #     coeffs = Chebyshev.fit(np.log10(Rm), np.log10(temperature), cheby_deg, domain=domain_Rm).coef
-    #     cm.append(coeffs)
-    #     z = (x*(domain_Rm[1] - domain_Rm[0]) + domain_Rm[0] + domain_Rm[1])/2
-    #     if plot_dim != 1:
-    #         ax_Rm = axes_m[i]
-    #     else:
-    #         ax_Rm = axes_m
-    #     ax_Rm.plot(Rm, temperature, linewidth=0, marker='o')
-    #     ax_Rm.plot(10**z, 10**chebval(x, coeffs))
-    #     ax_Rm.set_ylabel('T (K)'); ax_Rm.set_xlabel('R- ($\Omega$)')
-    #     ax_Rm.set_title('{} T'.format(field))
-
-    # fig_p.tight_layout(); fig_m.tight_layout()
-        
-    # return cp, cm
-
 def interpChebyPoly(cp, cm, poly_order, fields):
     cheby_poly_coefs_p = np.array([])
     cheby_poly_coefs_m = np.array([])
@@ -224,41 +169,42 @@ def interpChebyPoly(cp, cm, poly_order, fields):
     
     return cheby_poly_coefs_p, cheby_poly_coefs_m
 
-def interpChebyPolySpline1D(cp, cm, cheby_deg, fields, kind='cubic'):
+def interpChebyPolySpline1D(coeffs_dict, cheby_deg, fields, thermometers, kind='cubic'):
     #lists of interpolations functions for each cheby coeff
     #Functions are evaluated at a particular field
     cheby_interp_p = []
     cheby_interp_m = []
+
+    cheby_interp_dict = {}
+
+    
     x_eval = np.linspace(fields[0], fields[-1], 100)
     plot_dim = int(np.ceil(np.sqrt(cheby_deg+1)))
-    fig_p, axes_p = plt.subplots(plot_dim, plot_dim)
-    fig_m, axes_m = plt.subplots(plot_dim, plot_dim)
-    axes_p = axes_p.flatten(); axes_m = axes_m.flatten()
 
-    for i in range(cheby_deg+1):
-        ax = axes_p[i]
-        ax.set_title('c{}+'.format(i)); ax.set_xlabel('Field (T)')
+    for therm in thermometers:
+        fig, axes = plt.subplots(plot_dim, plot_dim)
+        axes = axes.flatten()
+        therm_indicator = therm.split('_')[1]
 
-        cp_i = np.array([c[i] for c in cp])
-        f_interp = interp1d(fields, cp_i, kind=kind)
-        cheby_interp_p.append(f_interp)
+        coeffs_list = coeffs_dict[therm]
 
-        ax.plot(fields, cp_i, marker='o', linewidth=0, label='c{}'.format(i))
-        ax.plot(x_eval, f_interp(x_eval))
+        cheby_interp_dict[therm] = []
 
-        ax = axes_m[i]
-        ax.set_title('c{}-'.format(i)); ax.set_xlabel('Field (T)')
+        for i in range(cheby_deg+1):
+            ax = axes[i]
+            ax.set_title('c{0}-{1}'.format(i,therm_indicator)); ax.set_xlabel('Field (T)')
 
-        cm_i = np.array([c[i] for c in cm])
-        f_interp = interp1d(fields, cm_i, kind=kind)
-        cheby_interp_m.append(f_interp)
+            c_i = np.array([c[i] for c in coeffs_list])
+            f_interp = interp1d(fields, c_i, kind=kind)
 
-        ax.plot(fields, cm_i, marker='o', linewidth=0, label='c{}'.format(i))
-        ax.plot(x_eval, f_interp(x_eval))
-        
-    fig_p.tight_layout(); fig_m.tight_layout()
+            cheyb_interp_dict[therm].append(f_interp)
+
+            ax.plot(fields, c_i, marker='o', linewidth=0, label='c{0}-{1}'.format(i, therm_indicator))
+            ax.plot(x_eval, f_interp(x_eval))
+
+        fig.tight_layout();
     
-    return cheby_interp_p, cheby_interp_m
+    return cheby_interp_dict
 
 def extractTemp(R, r_max, r_min, cheby_coefs):
     logR = np.log10(R)
