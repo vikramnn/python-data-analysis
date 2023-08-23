@@ -172,11 +172,8 @@ def interpChebyPoly(cp, cm, poly_order, fields):
 def interpChebyPolySpline1D(coeffs_dict, cheby_deg, fields, thermometers, kind='cubic'):
     #lists of interpolations functions for each cheby coeff
     #Functions are evaluated at a particular field
-    cheby_interp_p = []
-    cheby_interp_m = []
 
     cheby_interp_dict = {}
-
     
     x_eval = np.linspace(fields[0], fields[-1], 100)
     plot_dim = int(np.ceil(np.sqrt(cheby_deg+1)))
