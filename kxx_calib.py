@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy.polynomial.chebyshev import Chebyshev, chebval
+from numpy.polynomial.chebyshev import Chebyshev, chebval, chebder
 from numpy.polynomial.polynomial import polyfit, polyval
 from scipy.interpolate import interp1d
 
@@ -139,6 +139,30 @@ def chebyCalibFields(df_avg, cheby_deg, fields, thermometers):
         
     return coeffs_dict
 
+def plotCheby(Rmax, Rmin, coeffs):
+    x = np.linspace(-1,1,100)
+    domain_logR = np.log(np.array([Rmin, Rmax]))
+    z = (x*(domain_logR[1] - domain_logR[0]) + domain_logR[0] + domain_logR[1])/2
+
+    fig, ax = plt.subplots()
+    ax.plot(np.exp(z), np.exp(chebval(x, coeffs)))
+    fig.tight_layout()
+
+# def plotChebyDeriv(Rmax, Rmin, coeffs):
+#     x = np.linspace(-1,1,100)
+#     domain_logR = np.log(np.array([Rmin, Rmax]))
+#     z = (x*(domain_logR[1] - domain_logR[0]) + domain_logR[0] + domain_logR[1])/2
+
+#     coeffs_deriv = chebder(coeffs)
+
+#     fig, ax = plt.subplots()
+#     ax.plot(np.exp(z), np.exp(chebval(x, coeffs_deriv)))
+#     fig.tight_layout()
+
+    
+
+    
+
 def interpChebyPoly(cp, cm, poly_order, fields):
     cheby_poly_coefs_p = np.array([])
     cheby_poly_coefs_m = np.array([])
@@ -202,7 +226,7 @@ def interpChebyPolySpline1D(coeffs_dict, cheby_deg, fields, thermometers, kind='
             c_i = np.array([c[i] for c in coeffs_list])
             f_interp = interp1d(fields, c_i, kind=kind)
 
-            cheyb_interp_dict[therm].append(f_interp)
+            cheby_interp_dict[therm].append(f_interp)
 
             ax.plot(fields, c_i, marker='o', linewidth=0, label='c{0}-{1}'.format(i, therm_indicator))
             ax.plot(x_eval, f_interp(x_eval))
