@@ -114,12 +114,12 @@ def chebyCalibFields(df_avg, cheby_deg, fields, thermometers):
             R = df_slice[therm].values
             temperature = df_slice['Temperature (K)'].values
 
-            domain_R = np.log10(np.array([R.min(), R.max()]))
+            domain_R = np.log(np.array([R.min(), R.max()]))
 
             x = np.linspace(-1,1,100)
 
             #Fitting
-            coeffs = Chebyshev.fit(np.log10(R), np.log10(temperature), cheby_deg, domain=domain_R).coef
+            coeffs = Chebyshev.fit(np.log(R), np.log(temperature), cheby_deg, domain=domain_R).coef
             
             coeffs_dict[therm].append(coeffs)
             
@@ -131,7 +131,7 @@ def chebyCalibFields(df_avg, cheby_deg, fields, thermometers):
                 ax = axes
                 
             ax.plot(R, temperature, linewidth=0, marker='o')
-            ax.plot(10**z, 10**chebval(x, coeffs))
+            ax.plot(np.exp(z), np.exp(chebval(x, coeffs)))
             ax.set_ylabel('T (K)'); ax.set_xlabel('{} ($\Omega$)'.format(therm))
             ax.set_title('{} T'.format(field));
 
@@ -235,22 +235,22 @@ def thermometerMR(df_avg, thermometers):
     fig.tight_layout()
 
 def extractTemp(R, r_max, r_min, cheby_coefs):
-    logR = np.log10(R)
-    domain = np.log10([r_min, r_max])
+    logR = np.log(R)
+    domain = np.log([r_min, r_max])
     
     X = ((logR - domain[0]) - (domain[1] - logR))/(domain[1]-domain[0])
-    T = 10**chebval(X, cheby_coefs)
+    T = np.exp(chebval(X, cheby_coefs))
     return T
 
 def extractTempSpline(R, B, f_interp_max, f_interp_min, cheby_interp_funcs):
     cheby_coefs_eval = np.array([f(B) for f in cheby_interp_funcs])
-    logR = np.log10(R)
+    logR = np.log(R)
     r_min = f_interp_min(B)
     r_max = f_interp_max(B)
-    domain = np.log10([r_min, r_max])
+    domain = np.log([r_min, r_max])
     
     X = ((logR - domain[0]) - (domain[1] - logR))/(domain[1]-domain[0])
-    T = 10**chebval(X, cheby_coefs_eval)
+    T = np.exp(chebval(X, cheby_coefs_eval))
     return T
     
 def extractTempPoly(R, B, r_max_poly, r_min_poly, cheby_poly_coefs):
