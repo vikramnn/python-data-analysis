@@ -59,6 +59,14 @@ def minMaxInterp(df_interp, poly_order, fields):
     
     return rp_max_poly, rp_min_poly, rm_max_poly, rm_min_poly
 
+def minMax(df_interp, thermometers):
+    domain_dict = {}
+
+    for therm in thermometers:
+        domain_dict[therm] = [df_interp[therm].max(), df_interp[therm].min()]
+
+    return domain_dict
+
 def minMaxInterpSpline(df_interp, fields, thermometers, kind='cubic'):
     fig, axes = plt.subplots(len(thermometers),2)
     x_eval = np.linspace(fields[0], fields[-1], 100)
