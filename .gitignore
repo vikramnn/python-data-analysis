@@ -1,0 +1,10 @@
+# Ignore all files...
+*.*
+
+#and directores 
+/*
+
+
+# ...except the ones we want
+!*.py
+!.gitignore
