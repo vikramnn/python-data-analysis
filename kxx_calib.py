@@ -84,9 +84,11 @@ def minMaxInterpSpline(df_interp, fields, thermometers, kind='cubic'):
 
             f_interp_max = interp1d(fields, rmax, kind=kind)
             axes[i,0].plot(x_eval, f_interp_max(x_eval))
+            axes[i,0].set_ylabel('{}_max'.format(therm))
         
             f_interp_min = interp1d(fields, rmin, kind=kind)
             axes[i,1].plot(x_eval, f_interp_min(x_eval))
+            axes[i,1].set_ylabel('{}_min'.format(therm))
 
             domain_interp_dict[therm] = [f_interp_max, f_interp_min]
 
