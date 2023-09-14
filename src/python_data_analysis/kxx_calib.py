@@ -5,6 +5,20 @@ from numpy.polynomial.polynomial import polyfit, polyval
 from scipy.interpolate import interp1d
 
 def plotCalib(df_calib, thermometers):
+    '''
+    Plots the raw calibration data in a calibration dataframe
+    Specifically: plots T vs R at different fields
+
+    Parameters:
+        df_calib:     dataframe w/ calibration data; typically Field
+                      is rounded to 2 decimal places, mask is already
+                      filtered to mask == 1
+        thermometers: list of dataframe column names corresponding to
+                      the thermometer resistances
+
+    Returns:
+        df_avg: dataframe w/ averaged resistances and temperatures
+    '''
     #thermometers is a list of columns in the dataframe that need to be calibrated
     fig, axes = plt.subplots(len(thermometers),1)
     fields = np.unique(df_calib['Field (T)'].values)
