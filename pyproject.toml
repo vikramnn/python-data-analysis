@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "python_data_analysis"
+version = "0.1.0"
+description = "Basic functions for analyzing sample data in the Analytis Lab"
+authors = ["Vikram Nagarajan"]
+license = "None"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
