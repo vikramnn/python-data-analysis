@@ -2,7 +2,21 @@
 
 
 
-## v0.2.0 (2023-09-14)
+## v1.0.0 (2023-09-14)
+
+### Breaking
+
+* feat(kxx_calib): removed all polynomial interpolation funcs + others
+
+BREAKING CHANGE: chebyDeriv and polynomial interpolations unavailable
+after this ([`f953741`](https://github.com/vikramnn/python-data-analysis/commit/f953741682bf880879808d2b1a11096f503366f7))
+
+### Documentation
+
+* docs(kxx_calib): added docstrings to most functions ([`585db92`](https://github.com/vikramnn/python-data-analysis/commit/585db92ca11461030c1237aadcf1a75e183d6fd7))
+
+
+## v0.2.0 (2023-09-15)
 
 ### Feature
 
