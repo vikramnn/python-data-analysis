@@ -2,7 +2,14 @@
 
 
 
-## v0.1.0 (2023-09-14)
+## v0.2.0 (2023-09-14)
+
+### Feature
+
+* feat(kxx_calib): another test function ([`808437b`](https://github.com/vikramnn/python-data-analysis/commit/808437b906dba47841f949e0c0f4ecee156b803f))
+
+
+## v0.1.0 (2023-09-15)
 
 ### Feature
 
