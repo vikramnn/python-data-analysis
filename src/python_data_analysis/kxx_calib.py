@@ -39,49 +39,43 @@ def plotCalib(df_calib, thermometers):
     
     return df_avg
 
-def minMaxInterp(df_interp, poly_order, fields):
-    
-    fig, ((axp_mx, axm_mx), (axp_mn, axm_mn)) = plt.subplots(2,2)
+def minMax(df_avg, thermometers):
+    '''
+    Function for calculating minima and maxima of the thermometer resistances
+    Use this function for 1 set of data, i.e. for 1 magnetic field 
 
-    df_interp.groupby('Field (T)').max().plot(ax=axp_mx, y='R+', linewidth=0, marker='o')
-    df_interp.groupby('Field (T)').max().plot(ax=axm_mx, y='R-', linewidth=0, marker='o')
-    df_interp.groupby('Field (T)').min().plot(ax=axp_mn, y='R+', linewidth=0, marker='o')
-    df_interp.groupby('Field (T)').min().plot(ax=axm_mn, y='R-', linewidth=0, marker='o')
+    Parameters
+        df_avg:       dataframe w/ average resistances and temperatures
+        thermometers: list of dataframe column names corresponding to thermometer resistances
 
-    rp_max = df_interp.groupby('Field (T)').max()['R+'].values
-    rp_min = df_interp.groupby('Field (T)').min()['R+'].values
-    rm_max = df_interp.groupby('Field (T)').max()['R-'].values
-    rm_min = df_interp.groupby('Field (T)').min()['R-'].values
-
-    rp_max_poly = polyfit(fields, rp_max, poly_order)
-    fit = polyval(np.linspace(fields[0], fields[-1], 100), rp_max_poly)
-    axp_mx.plot(np.linspace(fields[0], fields[-1], 100), fit)
-
-    rp_min_poly = polyfit(fields, rp_min, poly_order)
-    fit = polyval(np.linspace(fields[0], fields[-1], 100), rp_min_poly)
-    axp_mn.plot(np.linspace(fields[0], fields[-1], 100), fit)
-
-    rm_max_poly = polyfit(fields, rm_max, poly_order)
-    fit = polyval(np.linspace(fields[0], fields[-1], 100), rm_max_poly)
-    axm_mx.plot(np.linspace(fields[0], fields[-1], 100), fit)
-
-    rm_min_poly = polyfit(fields, rm_min, poly_order)
-    fit = polyval(np.linspace(fields[0], fields[-1], 100), rm_min_poly)
-    axm_mn.plot(np.linspace(fields[0], fields[-1], 100), fit)
-    
-    fig.tight_layout()
-    
-    return rp_max_poly, rp_min_poly, rm_max_poly, rm_min_poly
-
-def minMax(df_interp, thermometers):
+    Returns:
+        domain_dict: dictionary with thermometer names as keys and [max,min] list as values
+    '''
     domain_dict = {}
 
     for therm in thermometers:
-        domain_dict[therm] = [df_interp[therm].max(), df_interp[therm].min()]
+        domain_dict[therm] = [df_avg[therm].max(), df_avg[therm].min()]
 
     return domain_dict
 
 def minMaxInterpSpline(df_interp, fields, thermometers, kind='cubic'):
+    '''
+    Function for interpolating the minima and maxima of thermometer data at
+    different magnetic fields
+    Use this function if you have many temperature calibrations at different fields
+    It also plots the interpolations for each thermometer min, max
+
+    Parameters
+        df_interp:    dataframe w/ resistance values to be interpolated
+        fields:       field values to interpolate between
+        thermometers: list of dataframe column names corresponding to thermometer resistances
+        kind='cubic': specifies the type of spline interpolation passed to
+                      scipy.interpolate.interp1d
+
+    Returns
+        domain_interp_dict: dictionary with the thermometer names as keys and the interpolation
+                            functions [f_interp_max, f_interp_min] as values
+    '''
     fig, axes = plt.subplots(len(thermometers),2)
     x_eval = np.linspace(fields[0], fields[-1], 100)
 
@@ -172,12 +166,6 @@ def chebyCalibFields(df_avg, cheby_deg, fields, thermometers):
         
     return coeffs_dict
 
-def test():
-    return
-
-def test2():
-    return
-
 def plotCheby(Rmax, Rmin, coeffs):
     x = np.linspace(-1,1,100)
     domain_logR = np.log(np.array([Rmin, Rmax]))
@@ -187,16 +175,6 @@ def plotCheby(Rmax, Rmin, coeffs):
     ax.plot(np.exp(z), np.exp(chebval(x, coeffs)))
     fig.tight_layout()
 
-# def plotChebyDeriv(Rmax, Rmin, coeffs):
-#     x = np.linspace(-1,1,100)
-#     domain_logR = np.log(np.array([Rmin, Rmax]))
-#     z = (x*(domain_logR[1] - domain_logR[0]) + domain_logR[0] + domain_logR[1])/2
-
-#     coeffs_deriv = chebder(coeffs)
-
-#     fig, ax = plt.subplots()
-#     ax.plot(np.exp(z), np.exp(chebval(x, coeffs_deriv)))
-#     fig.tight_layout()
 def interpChebyPolySpline1D(coeffs_dict, cheby_deg, fields, thermometers, kind='cubic'):
     '''
     Function to interpolate Chebyshev coefficients for each thermometer between all fields
@@ -215,45 +193,7 @@ def interpChebyPolySpline1D(coeffs_dict, cheby_deg, fields, thermometers, kind='
                            coefficient
     '''
 
-def interpChebyPoly(cp, cm, poly_order, fields):
-    cheby_poly_coefs_p = np.array([])
-    cheby_poly_coefs_m = np.array([])
-    plot_dim = int(np.ceil(np.sqrt(cheby_deg)))
-    fig_p, axes_p = plt.subplots(plot_dim, plot_dim)
-    fig_m, axes_m = plt.subplots(plot_dim, plot_dim)
-    axes_p = axes_p.flatten(); axes_m = axes_m.flatten()
-
-    for i in range(cheby_deg+1):
-        ax = axes_p[i]
-        ax.set_title('c{}+'.format(i)); ax.set_xlabel('Field (T)')
-
-        cp_i = np.array([c[i] for c in cp])
-        poly_coefs_p = polyfit(fields, cp_i, poly_order)
-        fit = polyval(np.linspace(fields[0], fields[-1], 100), poly_coefs_p)
-        cheby_poly_coefs_p = np.append(cheby_poly_coefs_p, poly_coefs_p)
-
-        ax.plot(fields, cp_i, marker='o', linewidth=0, label='c{}'.format(i))
-        ax.plot(np.linspace(fields[0], fields[-1], 100), fit)
-        fig_p.tight_layout()
-
-        ax = axes_m[i]
-        ax.set_title('c{}-'.format(i)); ax.set_xlabel('Field (T)')
-
-        cm_i = np.array([c[i] for c in cm])
-        poly_coefs_m = polyfit(fields, cm_i, poly_order)
-        fit = polyval(np.linspace(fields[0], fields[-1], 100), poly_coefs_m)
-        cheby_poly_coefs_m = np.append(cheby_poly_coefs_m, poly_coefs_m)
-
-        ax.plot(fields, cm_i, marker='o', linewidth=0, label='c{}'.format(i))
-        ax.plot(np.linspace(fields[0], fields[-1], 100), fit)
-        fig_m.tight_layout()
-
-    cheby_poly_coefs_p = cheby_poly_coefs_p.reshape(cheby_deg+1,poly_order+1).T
-    cheby_poly_coefs_m = cheby_poly_coefs_m.reshape(cheby_deg+1,poly_order+1).T
     
-    return cheby_poly_coefs_p, cheby_poly_coefs_m
-
-def interpChebyPolySpline1D(coeffs_dict, cheby_deg, fields, thermometers, kind='cubic'):
     #lists of interpolations functions for each cheby coeff
     #Functions are evaluated at a particular field
 
@@ -365,24 +305,3 @@ def extractTempSpline(R, B, f_interp_max, f_interp_min, cheby_interp_funcs):
     X = ((logR - domain[0]) - (domain[1] - logR))/(domain[1]-domain[0])
     T = np.exp(chebval(X, cheby_coefs_eval))
     return T
-    
-def extractTempPoly(R, B, r_max_poly, r_min_poly, cheby_poly_coefs):
-    '''
-    B is fixed, R is an array, domain is [log10(R_lower), log10(R_upper)]
-    cheby_poly_coefs is a matrix of coefficient values at different fields
-    e.g. c0(B) = c00 + c01*B + ... +c0M * B**M
-         ...
-         [[c00 c10 ... cM0
-            .           .
-           c0M c1M ... cMM]]
-    '''
-    cheby_coefs_eval = polyval(B, cheby_poly_coefs) # This gives a row array of the cheby coefficients at field B
-    logR = np.log10(R)
-    r_min = polyval(B, r_min_poly)
-    r_max = polyval(B, r_max_poly)
-    domain = np.log10([r_min, r_max])
-    
-    X = ((logR - domain[0]) - (domain[1] - logR))/(domain[1]-domain[0])
-    T = 10**chebval(X, cheby_coefs_eval)
-    return T
-
