@@ -112,6 +112,23 @@ def minMaxInterpSpline(df_interp, fields, thermometers, kind='cubic'):
     return domain_interp_dict
 
 def chebyCalibFields(df_avg, cheby_deg, fields, thermometers):
+    '''
+    Function for performing Chebyshev calibrations at many different fields for all thermometers
+    Also plots fits at each field for each thermometer
+
+    Parameters
+        df_avg:       dataframe with R/T values to be fitted
+        cheby_deg:    degree of the Chebyshev polynomial to fit
+        fields:       fields at which the calibrations were performed
+        thermometers: list of dataframe column names corresponding to thermometer resistances
+
+    Returns
+        coeffs_dict: dictionary where the keys are the thermometer names and the values are a
+                     list of arrays of Chebyshev coefficients returned from Chebyshev.fit(...).coef;
+                     the number of arrays in each list corresponds to the number of field values,
+                     and the order is dictated by the order of fields passed, typically smallest to
+                     largest
+    '''
 
     coeffs_dict = {}
     
@@ -180,10 +197,23 @@ def plotCheby(Rmax, Rmin, coeffs):
 #     fig, ax = plt.subplots()
 #     ax.plot(np.exp(z), np.exp(chebval(x, coeffs_deriv)))
 #     fig.tight_layout()
+def interpChebyPolySpline1D(coeffs_dict, cheby_deg, fields, thermometers, kind='cubic'):
+    '''
+    Function to interpolate Chebyshev coefficients for each thermometer between all fields
+    Also plots the interpolation results
 
-    
+    Parameters
+        coeffs_dict:  dictionary of lists of chebyshev coeff arrays (values) for each thermometer (keys)
+                      output of ChebyCalibFields
+        cheby_deg:    degree of the Chebyshev polynomials, used to determine the number of subplots
+        fields:       the fields between which the interpolation is occuring
+        thermometers: names of the thermometers in the dataframe
+        kind='cubic': specifies the kind of spline interpolation
 
-    
+    Returns
+        cheby_interp_dict: keys=thermometers, values=list of interpolation functions for each Chebyshev
+                           coefficient
+    '''
 
 def interpChebyPoly(cp, cm, poly_order, fields):
     cheby_poly_coefs_p = np.array([])
@@ -258,6 +288,13 @@ def interpChebyPolySpline1D(coeffs_dict, cheby_deg, fields, thermometers, kind='
     return cheby_interp_dict
 
 def thermometerMR(df_avg, thermometers):
+    '''
+    Function for calculating the magnetoresistance of each thermometer and plotting it
+
+    Parameters
+        df_avg: dataframe w/ averaged R/T values
+        thermometers: list of thermometer column names
+    '''
     fig, axes = plt.subplots(len(thermometers),1)
     df_mr = df_avg[['Field (T)', 'Temp_round (K)'] + thermometers]
     #df_mr[thermometers] = df_mr.groupby('Temp_round (K)')[thermometers].transform(lambda x: (x-x.max())/x.max())
@@ -281,6 +318,20 @@ def thermometerMR(df_avg, thermometers):
     fig.tight_layout()
 
 def extractTemp(R, r_max, r_min, cheby_coefs):
+    '''
+    Function to extract temperature using a single set of calibration data (i.e. 1 field) and a single
+    set of Chebyshev coefficients
+    To be passed to dataframe via transform function
+
+    Parameters
+        R:           resistance values
+        r_max:       max resistance
+        r_min:       min resistance
+        cheby_coefs: array of chebyshev coefficients
+
+    Returns
+        T: temperature calculated from chebyshev fit
+    '''
     logR = np.log(R)
     domain = np.log([r_min, r_max])
     
@@ -289,6 +340,22 @@ def extractTemp(R, r_max, r_min, cheby_coefs):
     return T
 
 def extractTempSpline(R, B, f_interp_max, f_interp_min, cheby_interp_funcs):
+    '''
+    Function to extract temperature using interpolation functions for each Chebyshev coefficient
+    Use this to get temperature at many different fields
+    To be passed to dataframe via transform function
+
+    Parameters
+        R:                          resistance values
+        B:                          magnetic field at which to evaluate the interpolation functions
+        f_interp_max, f_interp_min: interpolation functions for the max/min resistance values
+        cheby_interp_funcs:         list of interpolation functions for each Chebyshev coefficient;
+                                    this is cheby_interp_dict (output of interpChebyPolySpline1D)
+                                    evaluated for a particular thermometer
+
+    Returns
+        T: calculated temperature from the interpolated coefficients
+    '''
     cheby_coefs_eval = np.array([f(B) for f in cheby_interp_funcs])
     logR = np.log(R)
     r_min = f_interp_min(B)
