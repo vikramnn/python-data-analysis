@@ -2,7 +2,14 @@
 
 
 
-## v0.0.0 (2023-09-14)
+## v0.1.0 (2023-09-14)
+
+### Feature
+
+* feat(kxx_calib.py): adding a test function to test semantic-release ([`3c446af`](https://github.com/vikramnn/python-data-analysis/commit/3c446af9103f3ca1c5a68370aaf7601294e02ee1))
+
+
+## v0.0.0 (2023-09-15)
 
 ### Documentation
 
