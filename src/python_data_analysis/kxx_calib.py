@@ -155,6 +155,9 @@ def chebyCalibFields(df_avg, cheby_deg, fields, thermometers):
         
     return coeffs_dict
 
+def test():
+    return
+
 def plotCheby(Rmax, Rmin, coeffs):
     x = np.linspace(-1,1,100)
     domain_logR = np.log(np.array([Rmin, Rmax]))
