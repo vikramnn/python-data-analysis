@@ -305,3 +305,86 @@ def extractTempSpline(R, B, f_interp_max, f_interp_min, cheby_interp_funcs):
     X = ((logR - domain[0]) - (domain[1] - logR))/(domain[1]-domain[0])
     T = np.exp(chebval(X, cheby_coefs_eval))
     return T
+
+def compareCalibs(df_exgas, df_hivac, thermometers):
+    '''
+    Function for comparing the resistance values of thermometers in exchange gas and hivac
+    Plots the exchange gas and hivac calibrations for each thermometer on their own subplots
+
+    Parameters:
+        df_exgas: exchange gas calibration df, unmasked
+        df_hivac: hivac calibration df, unmasked
+        thermometers: column names for thermometers
+    '''
+
+    fig, axes = plt.subplots(len(thermometers), 1, sharex=True)
+
+    for ax, therm in zip(axes, thermometers):
+        df_exgas[df_exgas['mask']==1].plot(ax=ax, x='Temperature (K)', y=therm, label='{} HiVac'.format(therm))
+        ax.set_ylabel('Resistance ($\Omega$)')
+
+    for ax, therm in zip(axes, thermometers):
+        df_hivac[df_hivac['mask']==1].plot(ax=ax, x='Temperature (K)', y=therm, label='{} exgas'.format(therm))
+
+    fig.tight_layout()
+
+def percentDev(df_exgas, df_hivac, thermometers, domain_dict, coeffs):
+    '''
+    Function for calculating and plotting the percent deviation of resistance and calculated temperature between the exchange gas and hivac calibrations
+
+    Parameters:
+        df_exgas:     exchange gas calibration df, unmasked and unrounded
+        df_hivac:     hivac calibration df, unmasked and unrounded
+        thermometers: column names for thermometers
+        domain_dict:  dictionary of domains for each thermoeter
+                      key: thermometer, value: [r_max,r_min]
+        coeffs:       array of chebyshev coefficients to pass to extractTemp
+    '''
+
+    #For the raw resistance
+    fig, axes = plt.subplots(len(thermometers), 1, sharex=True, figsize=(3,7.5))
+    groups = ['Field (T)', 'Temp_round (K)']
+    
+    df_hivac = df_hivac.round({'Field (T)':2})[(df['mask'] == 1)]
+    df_hivac['Temp_round (K)'] = df_hivac['Temperature (K)'].round(1)
+    df_hivac = df_hivac.groupby(groups).filter(lambda x: len(x)>50).groupby(groups).mean().reset_index()
+
+    df_exgas = df_exgas.round({'Field (T)':2})[(df['mask'] == 1)]
+    df_exgas['Temp_round (K)'] = df_exgas['Temperature (K)'].round(1)
+    df_exgas = df_exgas.groupby(groups).filter(lambda x: len(x)>50).groupby(groups).mean().reset_index()
+
+    for therm,ax in zip(thermometers, axes):
+        r_exgas = df_exgas[therm].values
+        r_hivac = df_hivac[therm].values
+        t = df_hivac['Temperature (K)'].values
+        ax.plot(t, (r_hivac-r_exgas)*100/r_exgas)
+        ax.set_title(therm)
+        ax.set_ylabel('($R_{hivac} - R_{exgas})/R_{exgas}$ (%)')
+
+    axes[2].set_xlabel('Temperature (K)')
+    fig.tight_layout()
+
+    #For the thermometers
+    for therm in thermometers:
+        T_string = 'T_' + therm.split('_')[1]
+        df_exgas[T_string] = df_exgas.groupby(['Field (T)'])[therm].transform(lambda x: extractTemp(x.values, domain_dict[therm][0], domain_dict[therm][1], coeffs))
+        df_hivac[T_string] = df_hivac.groupby(['Field (T)'])[therm].transform(lambda x: extractTemp(x.values, domain_dict[therm][0], domain_dict[therm][1], coeffs))
+
+    df_exgas = df_exgas.groupby(groups).filter(lambda x: len(x)>50).groupby(groups).mean().reset_index()
+    df_hivac = df_hivac.groupby(groups).filter(lambda x: len(x)>50).groupby(groups).mean().reset_index()
+
+    fig, axes = plt.subplots(3, 1, sharex=True, figsize=(3,7.5))
+    temperatures = ['T_H', 'T_C1', 'T_C2']
+    for temp,ax in zip(temperatures, axes):
+        t_exgas = df_exgas[temp].values
+        t_hivac = df_hivac[temp].values
+        t = df_hivac['Temperature (K)'].values
+        ax.plot(t, (t_hivac-t_exgas)*100/t_exgas)
+        ax.set_title(temp)
+        ax.set_ylabel('($T_{hivac} - T_{exgas})/T_{exgas}$ (%)')
+
+    axes[2].set_xlabel('Temperature (K)')
+
+    fig.tight_layout()
+
+    
