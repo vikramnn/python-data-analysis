@@ -2,7 +2,22 @@
 
 
 
-## v1.0.0 (2023-09-14)
+## v1.1.0 (2023-09-28)
+
+### Feature
+
+* feat(kxx_calib): added compareCalibs and percentDev functions ([`4eeeefb`](https://github.com/vikramnn/python-data-analysis/commit/4eeeefbfd746e4e63c11b3cc19de61410720e2dd))
+
+### Style
+
+* style: code linting ([`e8ac8b5`](https://github.com/vikramnn/python-data-analysis/commit/e8ac8b5913f22c41e68c719d63d4a40e0a887b31))
+
+### Unknown
+
+* Adding poetry.lock file ([`2a25025`](https://github.com/vikramnn/python-data-analysis/commit/2a2502512951df6a5aa5037256fa10bf7aa8c989))
+
+
+## v1.0.0 (2023-09-15)
 
 ### Breaking
 

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "python_data_analysis"
-version = "1.0.0"
+version = "1.1.0"
 description = "Basic functions for analyzing sample data in the Analytis Lab"
 authors = ["Vikram Nagarajan"]
 license = "None"
