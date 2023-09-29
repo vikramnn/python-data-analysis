@@ -20,8 +20,8 @@ def plotCalib(df_calib, thermometers):
     Returns:
         df_avg: dataframe w/ averaged resistances and temperatures
     """
-    #thermometers is a list of columns in the dataframe that need to be calibrated
-    fig, axes = plt.subplots(len(thermometers),1)
+    # thermometers is a list of columns in the dataframe that need to be calibrated
+    fig, axes = plt.subplots(len(thermometers), 1)
     fields = np.unique(df_calib['Field (T)'].values)
     num_colors = len(fields)
     cmap = plt.get_cmap('viridis')
@@ -335,16 +335,16 @@ def compareCalibs(df_exgas, df_hivac, thermometers):
     fig, axes = plt.subplots(len(thermometers), 1, sharex=True)
 
     for ax, therm in zip(axes, thermometers):
-        df_exgas[df_exgas['mask'] == 1].plot(ax=ax, x='Temperature (K)', y=therm, label='{} HiVac'.format(therm))
+        df_exgas[df_exgas['mask'] == 1].plot(ax=ax, x='Temperature (K)', y=therm, label='{} exgas'.format(therm))
         ax.set_ylabel('Resistance ($\Omega$)')
 
     for ax, therm in zip(axes, thermometers):
-        df_hivac[df_hivac['mask'] == 1].plot(ax=ax, x='Temperature (K)', y=therm, label='{} exgas'.format(therm))
+        df_hivac[df_hivac['mask'] == 1].plot(ax=ax, x='Temperature (K)', y=therm, label='{} hivac'.format(therm))
 
     fig.tight_layout()
 
 
-def percentDev(df_exgas, df_hivac, thermometers, domain_dict, coeffs):
+def percentDev(df_exgas, df_hivac, thermometers, domain_dict, coeffs_dict, index, **kwargs):
     """
     Calculate and plot the percent deviation between hivac and exgas data.
 
@@ -357,17 +357,19 @@ def percentDev(df_exgas, df_hivac, thermometers, domain_dict, coeffs):
         thermometers: column names for thermometers
         domain_dict:  dictionary of domains for each thermoeter
                       key: thermometer, value: [r_max,r_min]
-        coeffs:       array of chebyshev coefficients to pass to extractTemp
+        coeffs_dict:  dictionary of chebyshev coefficients to pass to extractTemp
+                      key: thermometer, value: [coeffs_array1, coeffs_array2...]
+        index:        index for list of coeffs arrays
     """
     # For the raw resistance
-    fig, axes = plt.subplots(len(thermometers), 1, sharex=True, figsize=(3,7.5))
+    fig, axes = plt.subplots(len(thermometers), 1, sharex=True, **kwargs)
     groups = ['Field (T)', 'Temp_round (K)']
 
-    df_hivac = df_hivac.round({'Field (T)':2})[(df['mask'] == 1)]
+    df_hivac = df_hivac.round({'Field (T)':2})[(df_hivac['mask'] == 1)]
     df_hivac['Temp_round (K)'] = df_hivac['Temperature (K)'].round(1)
     df_hivac = df_hivac.groupby(groups).filter(lambda x: len(x)>50).groupby(groups).mean().reset_index()
 
-    df_exgas = df_exgas.round({'Field (T)':2})[(df['mask'] == 1)]
+    df_exgas = df_exgas.round({'Field (T)':2})[(df_exgas['mask'] == 1)]
     df_exgas['Temp_round (K)'] = df_exgas['Temperature (K)'].round(1)
     df_exgas = df_exgas.groupby(groups).filter(lambda x: len(x)>50).groupby(groups).mean().reset_index()
 
@@ -378,6 +380,7 @@ def percentDev(df_exgas, df_hivac, thermometers, domain_dict, coeffs):
         ax.plot(t, (r_hivac-r_exgas)*100/r_exgas)
         ax.set_title(therm)
         ax.set_ylabel('($R_{hivac} - R_{exgas})/R_{exgas}$ (%)')
+        ax.set_xlim([2, 11])
 
     axes[2].set_xlabel('Temperature (K)')
     fig.tight_layout()
@@ -385,13 +388,10 @@ def percentDev(df_exgas, df_hivac, thermometers, domain_dict, coeffs):
     # For the thermometers
     for therm in thermometers:
         T_string = 'T_' + therm.split('_')[1]
-        df_exgas[T_string] = df_exgas.groupby(['Field (T)'])[therm].transform(lambda x: extractTemp(x.values, domain_dict[therm][0], domain_dict[therm][1], coeffs))
-        df_hivac[T_string] = df_hivac.groupby(['Field (T)'])[therm].transform(lambda x: extractTemp(x.values, domain_dict[therm][0], domain_dict[therm][1], coeffs))
+        df_exgas[T_string] = df_exgas.groupby(['Field (T)'])[therm].transform(lambda x: extractTemp(x.values, domain_dict[therm][0], domain_dict[therm][1], coeffs_dict[therm][index]))
+        df_hivac[T_string] = df_hivac.groupby(['Field (T)'])[therm].transform(lambda x: extractTemp(x.values, domain_dict[therm][0], domain_dict[therm][1], coeffs_dict[therm][index]))
 
-    df_exgas = df_exgas.groupby(groups).filter(lambda x: len(x)>50).groupby(groups).mean().reset_index()
-    df_hivac = df_hivac.groupby(groups).filter(lambda x: len(x)>50).groupby(groups).mean().reset_index()
-
-    fig, axes = plt.subplots(3, 1, sharex=True, figsize=(3,7.5))
+    fig, axes = plt.subplots(3, 1, sharex=True, **kwargs)
     temperatures = ['T_H', 'T_C1', 'T_C2']
     for temp, ax in zip(temperatures, axes):
         t_exgas = df_exgas[temp].values
@@ -400,6 +400,7 @@ def percentDev(df_exgas, df_hivac, thermometers, domain_dict, coeffs):
         ax.plot(t, (t_hivac-t_exgas)*100/t_exgas)
         ax.set_title(temp)
         ax.set_ylabel('($T_{hivac} - T_{exgas})/T_{exgas}$ (%)')
+        ax.set_xlim([2, 11])
 
     axes[2].set_xlabel('Temperature (K)')
 
