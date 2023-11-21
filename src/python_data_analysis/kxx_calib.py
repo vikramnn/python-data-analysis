@@ -22,22 +22,32 @@ def plotCalib(df_calib, thermometers):
     """
     # thermometers is a list of columns in the dataframe that need to be calibrated
     fig, axes = plt.subplots(len(thermometers), 1)
-    fields = np.unique(df_calib['Field (T)'].values)
+    fields = np.unique(df_calib["Field (T)"].values)
     num_colors = len(fields)
-    cmap = plt.get_cmap('viridis')
+    cmap = plt.get_cmap("viridis")
 
     for ax in axes:
-       ax.set_prop_cycle(color=[cmap(1.*k/num_colors) for k in range(num_colors)]) 
+        ax.set_prop_cycle(color=[cmap(1.0 * k / num_colors) for k in range(num_colors)])
 
-    df_avg = (df_calib.groupby(['Field (T)','Temp_round (K)'], as_index=False).filter(lambda x: len(x.index)>50)
-               .groupby(['Field (T)','Temp_round (K)'], as_index=False).mean())
+    df_avg = (
+        df_calib.groupby(["Field (T)", "Temp_round (K)"], as_index=False)
+        .filter(lambda x: len(x.index) > 50)
+        .groupby(["Field (T)", "Temp_round (K)"], as_index=False)
+        .mean()
+    )
 
     for i, therm in enumerate(thermometers):
-         df_avg.set_index(therm).groupby('Field (T)')['Temperature (K)'].plot(ax=axes[i], linewidth=0, marker='o', ylabel='Temperature (K)', xlabel='{} ($\Omega$)'.format(therm))
-    
-    axes[0].legend(list(map(lambda x: '{}T'.format(x), fields)), ncol=3)
+        df_avg.set_index(therm).groupby("Field (T)")["Temperature (K)"].plot(
+            ax=axes[i],
+            linewidth=0,
+            marker="o",
+            ylabel="Temperature (K)",
+            xlabel="{} ($\Omega$)".format(therm),
+        )
+
+    axes[0].legend(list(map(lambda x: "{}T".format(x), fields)), ncol=3)
     fig.tight_layout()
-    
+
     return df_avg
 
 
@@ -62,7 +72,7 @@ def minMax(df_avg, thermometers):
     return domain_dict
 
 
-def minMaxInterpSpline(df_interp, fields, thermometers, kind='cubic'):
+def minMaxInterpSpline(df_interp, fields, thermometers, kind="cubic"):
     """
     Interpolate the minima and maxima of thermometer data at different magnetic fields.
 
@@ -80,27 +90,31 @@ def minMaxInterpSpline(df_interp, fields, thermometers, kind='cubic'):
         domain_interp_dict: dictionary with the thermometer names as keys and the interpolation
                             functions [f_interp_max, f_interp_min] as values
     """
-    fig, axes = plt.subplots(len(thermometers),2)
+    fig, axes = plt.subplots(len(thermometers), 2)
     x_eval = np.linspace(fields[0], fields[-1], 100)
 
     domain_interp_dict = {}
 
     for i, therm in enumerate(thermometers):
-        df_interp.groupby('Field (T)').max()[therm].plot(ax=axes[i,0], y=therm, linewidth=0, marker='o')
-        df_interp.groupby('Field (T)').min()[therm].plot(ax=axes[i,1], y=therm, linewidth=0, marker='o')
+        df_interp.groupby("Field (T)").max()[therm].plot(
+            ax=axes[i, 0], y=therm, linewidth=0, marker="o"
+        )
+        df_interp.groupby("Field (T)").min()[therm].plot(
+            ax=axes[i, 1], y=therm, linewidth=0, marker="o"
+        )
 
-        rmax = df_interp.groupby('Field (T)').max()[therm].values
-        rmin = df_interp.groupby('Field (T)').min()[therm].values
+        rmax = df_interp.groupby("Field (T)").max()[therm].values
+        rmin = df_interp.groupby("Field (T)").min()[therm].values
 
         if len(fields) > 1:
 
             f_interp_max = interp1d(fields, rmax, kind=kind)
             axes[i, 0].plot(x_eval, f_interp_max(x_eval))
-            axes[i, 0].set_ylabel('{}_max'.format(therm))
+            axes[i, 0].set_ylabel("{}_max".format(therm))
 
             f_interp_min = interp1d(fields, rmin, kind=kind)
             axes[i, 1].plot(x_eval, f_interp_min(x_eval))
-            axes[i, 1].set_ylabel('{}_min'.format(therm))
+            axes[i, 1].set_ylabel("{}_min".format(therm))
 
             domain_interp_dict[therm] = [f_interp_max, f_interp_min]
 
@@ -140,30 +154,33 @@ def chebyCalibFields(df_avg, cheby_deg, fields, thermometers):
             axes = axes.flatten()
 
         for i, field in enumerate(fields):
-            df_slice = df_avg[df_avg['Field (T)'] == field]
+            df_slice = df_avg[df_avg["Field (T)"] == field]
             R = df_slice[therm].values
-            temperature = df_slice['Temperature (K)'].values
+            temperature = df_slice["Temperature (K)"].values
 
             domain_R = np.log(np.array([R.min(), R.max()]))
 
             x = np.linspace(-1, 1, 100)
 
             # Fitting
-            coeffs = Chebyshev.fit(np.log(R), np.log(temperature), cheby_deg, domain=domain_R).coef
+            coeffs = Chebyshev.fit(
+                np.log(R), np.log(temperature), cheby_deg, domain=domain_R
+            ).coef
 
             coeffs_dict[therm].append(coeffs)
 
-            z = (x*(domain_R[1] - domain_R[0]) + domain_R[0] + domain_R[1])/2
+            z = (x * (domain_R[1] - domain_R[0]) + domain_R[0] + domain_R[1]) / 2
 
             if plot_dim != 1:
                 ax = axes[i]
             else:
                 ax = axes
 
-            ax.plot(R, temperature, linewidth=0, marker='o')
+            ax.plot(R, temperature, linewidth=0, marker="o")
             ax.plot(np.exp(z), np.exp(chebval(x, coeffs)))
-            ax.set_ylabel('T (K)'); ax.set_xlabel('{} ($\Omega$)'.format(therm))
-            ax.set_title('{} T'.format(field));
+            ax.set_ylabel("T (K)")
+            ax.set_xlabel("{} ($\Omega$)".format(therm))
+            ax.set_title("{} T".format(field))
 
         fig.tight_layout()
 
@@ -178,14 +195,14 @@ def plotCheby(Rmax, Rmin, coeffs):
     """
     x = np.linspace(-1, 1, 100)
     domain_logR = np.log(np.array([Rmin, Rmax]))
-    z = (x*(domain_logR[1] - domain_logR[0]) + domain_logR[0] + domain_logR[1])/2
+    z = (x * (domain_logR[1] - domain_logR[0]) + domain_logR[0] + domain_logR[1]) / 2
 
     fig, ax = plt.subplots()
     ax.plot(np.exp(z), np.exp(chebval(x, coeffs)))
     fig.tight_layout()
 
 
-def interpChebyPolySpline1D(coeffs_dict, cheby_deg, fields, thermometers, kind='cubic'):
+def interpChebyPolySpline1D(coeffs_dict, cheby_deg, fields, thermometers, kind="cubic"):
     """
     Interpolate Chebyshev coefficients for each thermometer between all fields.
 
@@ -206,35 +223,42 @@ def interpChebyPolySpline1D(coeffs_dict, cheby_deg, fields, thermometers, kind='
     cheby_interp_dict = {}
 
     x_eval = np.linspace(fields[0], fields[-1], 100)
-    plot_dim = int(np.ceil(np.sqrt(cheby_deg+1)))
+    plot_dim = int(np.ceil(np.sqrt(cheby_deg + 1)))
 
     for therm in thermometers:
         fig, axes = plt.subplots(plot_dim, plot_dim)
         axes = axes.flatten()
-        therm_indicator = therm.split('_')[1]
+        therm_indicator = therm.split("_")[1]
 
         coeffs_list = coeffs_dict[therm]
 
         cheby_interp_dict[therm] = []
 
-        for i in range(cheby_deg+1):
+        for i in range(cheby_deg + 1):
             ax = axes[i]
-            ax.set_title('c{0}-{1}'.format(i, therm_indicator)); ax.set_xlabel('Field (T)')
+            ax.set_title("c{0}-{1}".format(i, therm_indicator))
+            ax.set_xlabel("Field (T)")
 
             c_i = np.array([c[i] for c in coeffs_list])
             f_interp = interp1d(fields, c_i, kind=kind)
 
             cheby_interp_dict[therm].append(f_interp)
 
-            ax.plot(fields, c_i, marker='o', linewidth=0, label='c{0}-{1}'.format(i, therm_indicator))
+            ax.plot(
+                fields,
+                c_i,
+                marker="o",
+                linewidth=0,
+                label="c{0}-{1}".format(i, therm_indicator),
+            )
             ax.plot(x_eval, f_interp(x_eval))
 
-        fig.tight_layout();
+        fig.tight_layout()
 
     return cheby_interp_dict
 
 
-def thermometerMR(df_avg, thermometers):
+def thermometerMR(df_avg, thermometers, **kwargs):
     """
     Calculate the magnetoresistance of each thermometer and plotting it.
 
@@ -294,7 +318,7 @@ def extractTemp(R, r_max, r_min, cheby_coefs):
     logR = np.log(R)
     domain = np.log([r_min, r_max])
 
-    X = ((logR - domain[0]) - (domain[1] - logR))/(domain[1]-domain[0])
+    X = ((logR - domain[0]) - (domain[1] - logR)) / (domain[1] - domain[0])
     T = np.exp(chebval(X, cheby_coefs))
     return T
 
@@ -323,7 +347,7 @@ def extractTempSpline(R, B, f_interp_max, f_interp_min, cheby_interp_funcs):
     r_max = f_interp_max(B)
     domain = np.log([r_min, r_max])
 
-    X = ((logR - domain[0]) - (domain[1] - logR))/(domain[1]-domain[0])
+    X = ((logR - domain[0]) - (domain[1] - logR)) / (domain[1] - domain[0])
     T = np.exp(chebval(X, cheby_coefs_eval))
     return T
 
@@ -343,16 +367,22 @@ def compareCalibs(df_exgas, df_hivac, thermometers):
     fig, axes = plt.subplots(len(thermometers), 1, sharex=True)
 
     for ax, therm in zip(axes, thermometers):
-        df_exgas[df_exgas['mask'] == 1].plot(ax=ax, x='Temperature (K)', y=therm, label='{} exgas'.format(therm))
-        ax.set_ylabel('Resistance ($\Omega$)')
+        df_exgas[df_exgas["mask"] == 1].plot(
+            ax=ax, x="Temperature (K)", y=therm, label="{} exgas".format(therm)
+        )
+        ax.set_ylabel("Resistance ($\Omega$)")
 
     for ax, therm in zip(axes, thermometers):
-        df_hivac[df_hivac['mask'] == 1].plot(ax=ax, x='Temperature (K)', y=therm, label='{} hivac'.format(therm))
+        df_hivac[df_hivac["mask"] == 1].plot(
+            ax=ax, x="Temperature (K)", y=therm, label="{} hivac".format(therm)
+        )
 
     fig.tight_layout()
 
 
-def percentDev(df_exgas, df_hivac, thermometers, domain_dict, coeffs_dict, index, **kwargs):
+def percentDev(
+    df_exgas, df_hivac, thermometers, domain_dict, coeffs_dict, index, **kwargs
+):
     """
     Calculate and plot the percent deviation between hivac and exgas data.
 
@@ -371,46 +401,71 @@ def percentDev(df_exgas, df_hivac, thermometers, domain_dict, coeffs_dict, index
     """
     # For the raw resistance
     fig, axes = plt.subplots(len(thermometers), 1, sharex=True, **kwargs)
-    groups = ['Field (T)', 'Temp_round (K)']
+    groups = ["Field (T)", "Temp_round (K)"]
 
-    df_hivac = df_hivac.round({'Field (T)':2})[(df_hivac['mask'] == 1)]
-    df_hivac['Temp_round (K)'] = df_hivac['Temperature (K)'].round(1)
-    df_hivac = df_hivac.groupby(groups).filter(lambda x: len(x)>50).groupby(groups).mean().reset_index()
+    df_hivac = df_hivac.round({"Field (T)": 2})[(df_hivac["mask"] == 1)]
+    df_hivac["Temp_round (K)"] = df_hivac["Temperature (K)"].round(1)
+    df_hivac = (
+        df_hivac.groupby(groups)
+        .filter(lambda x: len(x) > 50)
+        .groupby(groups)
+        .mean()
+        .reset_index()
+    )
 
-    df_exgas = df_exgas.round({'Field (T)':2})[(df_exgas['mask'] == 1)]
-    df_exgas['Temp_round (K)'] = df_exgas['Temperature (K)'].round(1)
-    df_exgas = df_exgas.groupby(groups).filter(lambda x: len(x)>50).groupby(groups).mean().reset_index()
+    df_exgas = df_exgas.round({"Field (T)": 2})[(df_exgas["mask"] == 1)]
+    df_exgas["Temp_round (K)"] = df_exgas["Temperature (K)"].round(1)
+    df_exgas = (
+        df_exgas.groupby(groups)
+        .filter(lambda x: len(x) > 50)
+        .groupby(groups)
+        .mean()
+        .reset_index()
+    )
 
     for therm, ax in zip(thermometers, axes):
         r_exgas = df_exgas[therm].values
         r_hivac = df_hivac[therm].values
-        t = df_hivac['Temperature (K)'].values
-        ax.plot(t, (r_hivac-r_exgas)*100/r_exgas)
+        t = df_hivac["Temperature (K)"].values
+        ax.plot(t, (r_hivac - r_exgas) * 100 / r_exgas)
         ax.set_title(therm)
-        ax.set_ylabel('($R_{hivac} - R_{exgas})/R_{exgas}$ (%)')
+        ax.set_ylabel("($R_{hivac} - R_{exgas})/R_{exgas}$ (%)")
         ax.set_xlim([2, 11])
 
-    axes[2].set_xlabel('Temperature (K)')
+    axes[2].set_xlabel("Temperature (K)")
     fig.tight_layout()
 
     # For the thermometers
     for therm in thermometers:
-        T_string = 'T_' + therm.split('_')[1]
-        df_exgas[T_string] = df_exgas.groupby(['Field (T)'])[therm].transform(lambda x: extractTemp(x.values, domain_dict[therm][0], domain_dict[therm][1], coeffs_dict[therm][index]))
-        df_hivac[T_string] = df_hivac.groupby(['Field (T)'])[therm].transform(lambda x: extractTemp(x.values, domain_dict[therm][0], domain_dict[therm][1], coeffs_dict[therm][index]))
+        T_string = "T_" + therm.split("_")[1]
+        df_exgas[T_string] = df_exgas.groupby(["Field (T)"])[therm].transform(
+            lambda x: extractTemp(
+                x.values,
+                domain_dict[therm][0],
+                domain_dict[therm][1],
+                coeffs_dict[therm][index],
+            )
+        )
+        df_hivac[T_string] = df_hivac.groupby(["Field (T)"])[therm].transform(
+            lambda x: extractTemp(
+                x.values,
+                domain_dict[therm][0],
+                domain_dict[therm][1],
+                coeffs_dict[therm][index],
+            )
+        )
 
     fig, axes = plt.subplots(3, 1, sharex=True, **kwargs)
-    temperatures = ['T_H', 'T_C1', 'T_C2']
+    temperatures = ["T_H", "T_C1", "T_C2"]
     for temp, ax in zip(temperatures, axes):
         t_exgas = df_exgas[temp].values
         t_hivac = df_hivac[temp].values
-        t = df_hivac['Temperature (K)'].values
-        ax.plot(t, (t_hivac-t_exgas)*100/t_exgas)
+        t = df_hivac["Temperature (K)"].values
+        ax.plot(t, (t_hivac - t_exgas) * 100 / t_exgas)
         ax.set_title(temp)
-        ax.set_ylabel('($T_{hivac} - T_{exgas})/T_{exgas}$ (%)')
+        ax.set_ylabel("($T_{hivac} - T_{exgas})/T_{exgas}$ (%)")
         ax.set_xlim([2, 11])
 
-    axes[2].set_xlabel('Temperature (K)')
+    axes[2].set_xlabel("Temperature (K)")
 
     fig.tight_layout()
-
