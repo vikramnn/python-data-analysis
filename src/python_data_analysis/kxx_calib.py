@@ -242,25 +242,33 @@ def thermometerMR(df_avg, thermometers):
         df_avg: dataframe w/ averaged R/T values
         thermometers: list of thermometer column names
     """
-    fig, axes = plt.subplots(len(thermometers),1)
-    df_mr = df_avg[['Field (T)', 'Temp_round (K)'] + thermometers]
+    fig, axes = plt.subplots(len(thermometers), 1, **kwargs)
+    df_mr = df_avg[["Field (T)", "Temp_round (K)"] + thermometers]
     # df_mr[thermometers] = df_mr.groupby('Temp_round (K)')[thermometers].transform(lambda x: (x-x.max())/x.max())
 
     # print(df_mr.set_index('Field (T)').groupby('Temp_round (K)').transform(lambda x: x-x[x['Field (T)']==0]))
 
-    cmap = plt.get_cmap('magma')
+    cmap = plt.get_cmap("magma")
 
-    gb_mr = df_mr.set_index(['Temp_round (K)', 'Field (T)']).groupby('Temp_round (K)')
+    gb_mr = df_mr.set_index(["Temp_round (K)", "Field (T)"]).groupby("Temp_round (K)")
 
-    keys = gb_mr.groups.keys(); num_colors = len(keys)
+    keys = gb_mr.groups.keys()
+    num_colors = len(keys)
 
     for i, therm in enumerate(thermometers):
-        axes[i].set_prop_cycle(color=[cmap(1.*k/num_colors) for k in range(num_colors)])
+        axes[i].set_prop_cycle(
+            color=[cmap(1.0 * k / num_colors) for k in range(num_colors)]
+        )
         axes[i].set_title(therm)
-        axes[i].set_ylabel('$\Delta R / R$')
+        axes[i].set_ylabel("$\Delta R / R$")
         for key, df_group in gb_mr:
-            df_group.loc[key].transform(lambda x: (x-x.loc[0])/x.loc[0])[therm].plot(ax=axes[i], marker='o', label=key)
-        axes[i].legend(ncol=2, bbox_to_anchor=(1.01,0.5), loc='center left', fontsize='small')
+            df_group.loc[key].transform(lambda x: (x - x.loc[0]) / x.loc[0])[
+                therm
+            ].plot(ax=axes[i], marker="o", label=key)
+        if i == 1:
+            axes[i].legend(
+                ncol=2, bbox_to_anchor=(1.01, 0.5), loc="center left", fontsize="small"
+            )
 
     fig.tight_layout()
 
