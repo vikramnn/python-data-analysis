@@ -2,7 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy.polynomial.chebyshev import Chebyshev, chebval
 from scipy.interpolate import interp1d
-
+from python_data_analysis.data_cleaning import *
+from scipy.signal import savgol_filter
 
 def plotCalib(df_calib, thermometers):
     """
@@ -470,70 +471,96 @@ def percentDev(
 
     fig.tight_layout()
 
-def extractTemperatureSweep(df, group_titles, field, lxx, lxy, w, t, Tp1='T_H', Tm1='T_C1', Tp2='T_C1', Tm2='T_C2'):
-    df_extr = df[df['Field (T)'] != 0].set_index(group_titles).groupby(group_titles).filter(lambda x: len(x)>150).groupby(group_titles).mean()
+def extractTemperatureSweep(df, group_titles, field, lxx, lxy, w, t, Tp1='T_H', Tm1='T_C1', Tp2='T_C1', Tm2='T_C2', antisym=True):
+    if antisym:
+        df_extr = df[df['Field (T)'] != 0].set_index(group_titles).groupby(group_titles).filter(lambda x: len(x)>150).groupby(group_titles).mean()
 
-    df_extr['dT_xx'] = df_extr[Tp1] - df_extr[Tm1]
-    df_extr['dT_xy'] = df_extr[Tp2] - df_extr[Tm2]
+        df_extr['dT_xx'] = df_extr[Tp1] - df_extr[Tm1]
+        df_extr['dT_xy'] = df_extr[Tp2] - df_extr[Tm2]
 
-    dT_xy_asym_p = (df_extr.xs(field)['dT_xy'].values - df_extr.xs(-field)['dT_xy'].values)/2
-    dT_xy_asym_m = -dT_xy_asym_p
-    df_extr['dT_xy_asym'] = np.append(dT_xy_asym_m, dT_xy_asym_p)
+        dT_xy_asym_p = (df_extr.xs(field)['dT_xy'].values - df_extr.xs(-field)['dT_xy'].values)/2
+        dT_xy_asym_m = -dT_xy_asym_p
+        df_extr['dT_xy_asym'] = np.append(dT_xy_asym_m, dT_xy_asym_p)
 
-    dT_xx_sym = (df_extr.xs(9)['dT_xx'].values + df_extr.xs(-9)['dT_xx'].values)/2
-    df_extr['dT_xx_sym'] = np.append(dT_xx_sym, dT_xx_sym)
+        dT_xx_sym = (df_extr.xs(field)['dT_xx'].values + df_extr.xs(field)['dT_xx'].values)/2
+        df_extr['dT_xx_sym'] = np.append(dT_xx_sym, dT_xx_sym)
 
-    df_extr['T_avg (K)'] = (df_extr['T_H'] + df_extr['T_C2'])/2
-    df_extr['kxx'] = (df_extr['Qdot'] * lxx)/(w * t * df_extr['dT_xx'])
-    df_extr['kxx_sym'] = (df_extr['Qdot'] * lxx)/(w * t * df_extr['dT_xx_sym'])
-    df_extr['kxy'] = -((df_extr['dT_xy_asym'] * w * t)/(df_extr['Qdot'] * lxy)) * df_extr['kxx_sym']**2
+        df_extr['T_avg (K)'] = (df_extr['T_H'] + df_extr['T_C2'])/2
+        df_extr['kxx'] = (df_extr['Qdot'] * lxx)/(w * t * df_extr['dT_xx'])
+        df_extr['kxx_sym'] = (df_extr['Qdot'] * lxx)/(w * t * df_extr['dT_xx_sym'])
+        df_extr['kxy'] = -((df_extr['dT_xy_asym'] * w * t)/(df_extr['Qdot'] * lxy)) * df_extr['kxx_sym']**2
+
+    else:
+        df_extr = df.set_index(group_titles).groupby(group_titles).filter(lambda x: len(x)>150).groupby(group_titles).mean()
+        df_extr['dT_xx'] = df_extr[Tp1] - df_extr[Tm1]
+        df_extr['T_avg (K)'] = (df_extr[Tp1] + df_extr[Tm1])/2
+        df_extr['dT/T'] = df_extr['dT_xx']/df_extr['T_avg']
+        df_extr['kxx'] = (df_extr['Qdot'] * lxx)/(w * t * df_extr['dT_xx'])
+        
 
     return df_extr
 
-def extractFieldSweep(df, group_titles, thermometers, domain_interp_dict, cheby_interp_dict, lxx, lxy, w, t, Tp1 = 'T_H', Tm1='T_C1', Tp2='T_C1', Tm2='T_C2'):
-    df_pos = df[df['Field (T)'] > 0]
-    df_neg = df[df['Field (T)'] < 0]
+def extractFieldSweep(df, group_titles, thermometers, domain_interp_dict, cheby_interp_dict, lxx, lxy, w, t, Tp1 = 'T_H', Tm1='T_C1', Tp2='T_C1', Tm2='T_C2', antisym=True):
+    if antisym:
+        df_pos = df[df['Field (T)'] > 0]
+        df_neg = df[df['Field (T)'] < 0]
 
-    df_extr_pos = (df_pos.set_index(group_titles).groupby(group_titles[:-1]).filter(lambda x: len(x.index)>500)
-             .groupby(group_titles[:-1]).apply(separateSweeps, sweep_dir='up', keep_both=True)
-             .groupby(group_titles).filter(lambda x: len(x.index)>50).groupby(['Temperature (K)','sweep_dir','Field (T)']).mean()
-          )
-
-    df_extr_neg = (df_neg.set_index(group_titles).groupby(group_titles[:-1]).filter(lambda x: len(x.index)>500)
-                 .groupby(group_titles[:-1]).apply(separateSweeps, sweep_dir='down', keep_both=True)
+        df_extr_pos = (df_pos.set_index(group_titles).groupby(group_titles[:-1]).filter(lambda x: len(x.index)>500)
+                 .groupby(group_titles[:-1]).apply(separateSweeps, sweep_dir='up', keep_both=True)
                  .groupby(group_titles).filter(lambda x: len(x.index)>50).groupby(['Temperature (K)','sweep_dir','Field (T)']).mean()
-                 #.groupby(group_titles).filter(lambda x: len(x.index)>50).groupby(group_titles).mean()
               )
 
-    group_titles = ['Temperature (K)','sweep_dir','Field (T)']     #use this if you want to see all up and down sweeps on separate plots
+        df_extr_neg = (df_neg.set_index(group_titles).groupby(group_titles[:-1]).filter(lambda x: len(x.index)>500)
+                     .groupby(group_titles[:-1]).apply(separateSweeps, sweep_dir='down', keep_both=True)
+                     .groupby(group_titles).filter(lambda x: len(x.index)>50).groupby(['Temperature (K)','sweep_dir','Field (T)']).mean()
+                     #.groupby(group_titles).filter(lambda x: len(x.index)>50).groupby(group_titles).mean()
+                  )
 
-    for df_extr in [df_extr_pos, df_extr_neg]:
+        group_titles = ['Temperature (K)','sweep_dir','Field (T)']     #use this if you want to see all up and down sweeps on separate plots
+
+        for df_extr in [df_extr_pos, df_extr_neg]:
+            for therm in thermometers:
+                T_string = 'T_' + therm.split('_')[1]
+                df_extr[T_string] = df_extr.groupby(['Temperature (K)', 'Field (T)'])[therm].transform(lambda x: extractTempSpline(x.values, x.name[-1], domain_interp_dict[therm][0], domain_interp_dict[therm][1], cheby_interp_dict[therm]))
+
+            df_extr['dT_xx'] = df_extr[Tp1] - df_extr[Tm1]
+            df_extr['dT_xy'] = df_extr[Tp2] - df_extr[Tm2]
+
+            df_extr['T_avg (K)'] = (df_extr['T_H'] + df_extr['T_C1'])/2
+            df_extr['dT/T'] = df_extr['dT_xx']/((df_extr['T_H']+df_extr['T_C1'])/2)
+
+        df_extr_neg = df_extr_neg.sort_index(level=['Temperature (K)', 'Field (T)'], ascending=[True,False])
+        df_extr_pos = df_extr_pos.reset_index()
+        df_extr_neg = df_extr_neg.reset_index()
+
+        df_extr = pd.concat([df_extr_neg[df_extr_neg['sweep_dir'] == 'down'], df_extr_pos[df_extr_pos['sweep_dir'] == 'down']])
+
+        dT_xy_asym_p = (df_extr[df_extr['Field (T)'] > 0]['dT_xy'].values - df_extr[df_extr['Field (T)'] < 0]['dT_xy'].values)/2
+        dT_xy_asym_m = -dT_xy_asym_p
+        df_extr['dT_xy_asym'] = np.append(dT_xy_asym_m, dT_xy_asym_p)
+
+        dT_xx_sym = (df_extr[df_extr['Field (T)'] > 0]['dT_xy'].values + df_extr[df_extr['Field (T)'] < 0]['dT_xy'].values)/2
+        df_extr['dT_xx_sym'] = np.append(dT_xx_sym, dT_xx_sym)
+
+        df_extr['kxx'] = (df_extr['Qdot'] * lxx)/(w * t * df_extr['dT_xx_sym'])
+        df_extr['kxy'] = -((df_extr['dT_xy_asym'] * w * t)/(df_extr['Qdot'] * lxy)) * df_extr['kxx']**2
+        df_extr['dk/k0'] = df_extr.groupby(group_titles[:-1])['kxx'].transform(lambda x: (x-x.min())/x.min())
+        df_extr['dk/dH'] = df_extr.groupby(group_titles[:-1])['kxx'].transform(lambda x: savgol_filter(x, 7, 3, deriv=1))
+    else:
+        df_extr = (df.set_index(group_titles).groupby(group_titles[:-1]).filter(lambda x: len(x.index)>500)
+                     .groupby(group_titles[:-1]).apply(separateSweeps, sweep_dir='up', keep_both=True)
+                     .groupby(group_titles).filter(lambda x: len(x.index)>50).groupby(['Temperature (K)','sweep_dir','Field (T)']).mean()
+                  )
+
         for therm in thermometers:
             T_string = 'T_' + therm.split('_')[1]
             df_extr[T_string] = df_extr.groupby(['Temperature (K)', 'Field (T)'])[therm].transform(lambda x: extractTempSpline(x.values, x.name[-1], domain_interp_dict[therm][0], domain_interp_dict[therm][1], cheby_interp_dict[therm]))
 
         df_extr['dT_xx'] = df_extr[Tp1] - df_extr[Tm1]
-        df_extr['dT_xy'] = df_extr[Tp2] - df_extr[Tm2]
-
-        df_extr['T_avg (K)'] = (df_extr['T_H'] + df_extr['T_C1'])/2
-        df_extr['dT/T'] = df_extr['dT_xx']/((df_extr['T_H']+df_extr['T_C1'])/2)
-
-    df_extr_neg = df_extr_neg.sort_index(level=['Temperature (K)', 'Field (T)'], ascending=[True,False])
-    df_extr_pos = df_extr_pos.reset_index()
-    df_extr_neg = df_extr_neg.reset_index()
-
-    df_extr = pd.concat([df_extr_neg[df_extr_neg['sweep_dir'] == 'down'], df_extr_pos[df_extr_pos['sweep_dir'] == 'down']])
-
-    dT_xy_asym_p = (df_extr[df_extr['Field (T)']>0]['dT_xy'].values - df_extr[df_extr['Field (T)']<0]['dT_xy'].values)/2
-    dT_xy_asym_m = -dT_xy_asym_p
-    df_extr['dT_xy_asym'] = np.append(dT_xy_asym_m, dT_xy_asym_p)
-
-    dT_xx_sym = (df_extr[df_extr['Field (T)']>0]['dT_xy'].values + df_extr[df_extr['Field (T)']<0]['dT_xy'].values)/2
-    df_extr['dT_xx_sym'] = np.append(dT_xx_sym, dT_xx_sym)
-
-    df_extr['kxx'] = (df_extr['Qdot'] * lxx)/(w * t * df_extr['dT_xx_sym'])
-    df_extr['kxy'] = -((df_extr['dT_xy_asym'] * w * t)/(df_extr['Qdot'] * lxy)) * df_extr['kxx']**2
-    df_extr['dk/k0'] = df_extr.groupby(group_titles[:-1])['kxx'].transform(lambda x: (x-x.min())/x.min())
-    df_extr['dk/dH'] = df_extr.groupby(group_titles[:-1])['kxx'].transform(lambda x: savgol_filter(x, 7, 3, deriv=1))
+        df_extr['T_avg (K)'] = (df_extr[Tp1] + df_extr[Tm1])/2
+        df_extr['dT/T'] = df_extr['dT_xx']/df_extr['T_avg (K)']
+        df_extr['kxx'] = (df_extr['Qdot'] * lxx)/(w * t * df_extr['dT_xx'])
+        df_extr['dk/k0'] = df_extr.groupby(group_titles[:-1])['kxx'].transform(lambda x: (x-x.min())/x.min())
+        df_extr['dk/dH'] = df_extr.groupby(group_titles[:-1])['kxx'].transform(lambda x: savgol_filter(x, 7, 3, deriv=1))
 
     return df_extr
