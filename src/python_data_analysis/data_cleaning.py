@@ -86,6 +86,13 @@ def hamp_filt(vals_orig, k=21, t0=3):
     vals[outlier_idx] = np.nan
     return(vals)
 
+def excludeData(df, cols, mask_col, lims):
+    for lim in lims:
+        for col in cols:
+            df[col].mask(df[mask_col].between(lim[0], lim[1]), inplace=True)
+
+    return df
+
 def makeTitle(key, units, dev, ylabel):
     constr_title = ''
     if not iterable(key):
