@@ -247,31 +247,20 @@ def offsetData(input_gb, offset, devices):
         dfs.append(df_group)
     return pd.concat(dfs)
 
-def subtractOffsetg(input_gb, devices):
+def subtractOffsetg(input_gb, xlevel, devices):
     '''
     This is for eliminating the offset for the data by subtracting off the minimum indexed value (absolute)
     e.g. the data at temperature=0 or field=0
     '''
-    for group in input_gb.groups.keys():
-        df_group = input_gb.get_group(group)
-        idx = np.min(np.abs(df_group.index.get_level_values(-1)))
-        print(df_group[devices].loc[(group,idx)])
+    
+    dfs = []
+    for key, group in input_gb:
+        idx = group[xlevel].idxmin()
+        group[devices] = group[devices] - group[devices].loc[idx]
+        dfs.append(group)
 
-def subtractOffset_deprec(input_df, devices):
-    '''
-    This is for eliminating the offset for the data by subtracting off the minimum indexed value (absolute)
-    e.g. the data at temperature=0 or field=0
-    '''
-    names = input_df.index.names
-    input_df.reset_index(inplace=True)
-    idx = input_df[names[-1]].abs().idxmin()
 
-    output_df = (input_df.transform({k: (lambda x, k=k: x - input_df[k].loc[idx]) if k in devices 
-                                    else (lambda x: x) for k in input_df.columns})
-                         .set_index(names)         
-                )
-
-    return output_df
+    return pd.concat(dfs)
 
 def slice_inner(input_df, start=None, end=None):
     '''
