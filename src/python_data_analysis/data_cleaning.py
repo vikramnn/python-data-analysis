@@ -311,9 +311,9 @@ def unitize_label(label, label_name):
     label_str = '{0}{1}'.format(label*getPrefixMultiplier(label)[1],getPrefixMultiplier(label)[0]+unit)
     return label_str
 
-def plotdf(input_gb, device_info, group_titles, cmap=plt.get_cmap('magma'), plot_sweeps=False, **kwargs):
+def plotdf(input_gb, device_info, group_titles, cmap=plt.get_cmap('magma'), plot_sweeps=False, sharex=True, **kwargs):
     for gb in input_gb:
-        fig, axes = plt.subplots(len(device_info), 1)
+        fig, axes = plt.subplots(len(device_info), 1, sharex=sharex)
         key = gb[0]; df_group = gb[1]
         if not iterable(axes):
             axes = [axes]
